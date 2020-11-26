@@ -1,0 +1,149 @@
+USE [medicalshop]
+GO
+/****** Object:  StoredProcedure [dbo].[medicalshopdata]    Script Date: 26-11-2020 10:51:14 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER procedure [dbo].[medicalshopdata](
+@hs_Name nvarchar(max)=null,
+@sql nvarchar(max)=null,
+@id int =0,
+@stockdetails int =0,
+@saleperc decimal(5,2)=0.0,
+@flag int =0,
+@Productcode nvarchar(max)=null,
+@Productname nvarchar(max)=null,
+@producttype nvarchar(max)=null,
+@productcount int =0,
+@product_price money = 0
+
+)
+as 
+begin
+if(@flag=0)
+begin
+
+select Id,Name from holesaler ;
+end
+else if(@flag=1)
+begin
+declare @namecount int set @namecount=(select count(Name) from holesaler where Name=@hs_Name)
+if(@namecount=0)
+begin
+insert into holesaler(Name)values(@hs_Name);
+declare @columnname nvarchar(max)
+ declare @columnprice nvarchar(max)
+ declare @sql_1 nvarchar(max)
+ declare @sql_2 nvarchar(max)
+ declare @currentId int
+ set @currentId = IDENT_CURRENT('holesaler')
+ 
+ set @columnname =  dbo.getcolumnname( @currentId)
+ set @columnprice =  dbo.getpricecolumnname( @currentId)
+ SET @sql_1 = 'ALTER TABLE product ADD ' + @columnname + ' varchar(250);';
+ SET @sql_2 = 'ALTER TABLE product ADD ' + @columnprice + ' int;';
+ exec (@sql_1) exec (@sql_2)
+ end
+end
+else if(@flag=2)
+begin
+select * from product;
+end
+else if (@flag=3)
+begin
+exec(@sql)
+end
+else if(@flag=4)
+begin
+
+select Id, code,sparename as name ,salepercentage as sale, stockdetails as items,spareparttype as type from product
+
+end
+else if(@flag=5)
+begin
+declare @hcount int DECLARE @Counter INT 
+declare @qry nvarchar(max) Declare @sql_3 nvarchar(max) 
+set @hcount= (select count(*) from [dbo].[holesaler])
+SET @Counter=1 
+WHILE @Counter <= @hcount
+begin
+set @qry=concat(@qry,(select concat(concat('wholesale',@Counter),',','cast(','(((','Wholesale',@Counter,'price' ,'*salepercentage',')/100))',
+'+',concat('Wholesale',@Counter,'price'),' ','as decimal(10,2))','as ',' ',concat('price',@Counter),',' )) )
+
+set @Counter=@Counter+1
+end
+set @sql_3=@qry
+set @sql_3=Left(@sql_3,len(@sql_3)-1)
+declare @finalquery nvarchar(max)
+set @finalquery=concat('select ' ,@sql_3,' from product where Id = ',' ', @id)
+exec( @finalquery)
+
+ 
+
+
+end
+else if (@flag=6)
+begin
+ update product set [salepercentage]=@saleperc where Id =@id
+end
+else if (@flag=7)
+begin
+ update product set [stockdetails]=([stockdetails]-@stockdetails),updatedvalue=@stockdetails where Id =@id
+end
+
+else if (@flag=8)
+begin
+ update product set [stockdetails]=([stockdetails]+@stockdetails) where Id =@id
+end
+
+else if(@flag=9)
+begin
+
+select Id, code,sparename as name ,salepercentage as sale, stockdetails as items,spareparttype as type,updatedvalue from product where Id=@id
+
+end
+else if(@flag=10)
+begin
+declare @p_count int
+set @p_count = (select count(Product_id) from tempbilldetails where Product_id=@id)
+
+if(@p_count=0)
+begin
+insert into tempbilldetails values (@id,@Productcode,@Productname, @producttype , @productcount,@product_price  )
+										
+end
+else if(@p_count>0)
+begin
+declare @pastcount int set @pastcount=(select productcount from tempbilldetails where Product_id=@id)
+update  tempbilldetails set Productcode=@Productcode,Productname=@Productname, producttype=@producttype,  productcount= @productcount +@pastcount 
+where Product_id=@id																			
+end
+
+end
+else if(@flag=11)
+begin
+select Product_id , Productcode, Productname,producttype,  productcount,[product_price] from tempbilldetails
+	  
+end	  
+
+else if(@flag=12)
+begin
+truncate table tempbilldetails
+	  
+end	 
+else if(@flag=13)
+begin
+declare @stockcount int set @stockcount =(select productcount from tempbilldetails where Product_id=@id)
+update tempbilldetails set product_price=@product_price*@stockcount where Product_id=@id 	
+	  
+end	 
+else if(@flag=14) 
+begin
+select count(Name) from holesaler where Name=@hs_Name
+end
+end;   
+
+
+
+
